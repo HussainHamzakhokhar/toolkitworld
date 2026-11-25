@@ -1,0 +1,22 @@
+{
+  "name": "toolkitworld-server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Optional API for ToolKitWorld (contact form). The tools themselves never need it.",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.5",
+    "helmet": "^8.3.0"
+  }
+}

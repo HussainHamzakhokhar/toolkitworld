@@ -1,0 +1,6 @@
+# Old or alternative URLs → canonical pages (301 = permanent)
+/index.html  /  301
+/home        /  301
+/all-tools   /tools/  301
+/privacy     /privacy-policy/  301
+/terms-and-conditions  /terms/  301

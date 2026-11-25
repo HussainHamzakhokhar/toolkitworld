@@ -1,0 +1,14 @@
+{
+  "name": "toolkitworld",
+  "private": true,
+  "version": "1.0.0",
+  "description": "ToolKitWorld — free online calculators, PDF, image and text tools that run in the browser.",
+  "scripts": {
+    "install:all": "npm --prefix client install && npm --prefix server install",
+    "dev": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "preview": "npm --prefix client run preview",
+    "test": "npm --prefix client test && npm --prefix server test",
+    "server": "npm --prefix server start"
+  }
+}
