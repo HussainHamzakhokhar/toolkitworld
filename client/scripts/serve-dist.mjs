@@ -9,6 +9,12 @@ import zlib from 'node:zlib';
 
 const dist = path.resolve(import.meta.dirname, '..', 'dist');
 const port = Number(process.env.PORT || 4173);
+// Apply the same security headers Cloudflare Pages will send (the "/*" block of _headers).
+const globalHeaders = {};
+try {
+  const block = fs.readFileSync(path.join(dist, '_headers'), 'utf8').split(/\n(?=\S)/).find((b) => b.startsWith('/*'));
+  for (const line of block.split('\n').slice(1)) { const m = /^\s+([\w-]+):\s*(.+)$/.exec(line); if (m) globalHeaders[m[1]] = m[2]; }
+} catch { /* no _headers file */ }
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.xml': 'application/xml', '.txt': 'text/plain', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
 
 http.createServer((req, res) => {
@@ -24,9 +30,9 @@ http.createServer((req, res) => {
   const type = types[path.extname(file)] || 'application/octet-stream';
   // Compress text like Cloudflare does, so local performance tests are realistic.
   if (/gzip/.test(req.headers['accept-encoding'] || '') && /text|javascript|json|xml|svg/.test(type)) {
-    res.writeHead(status, { 'Content-Type': type, 'Content-Encoding': 'gzip' });
+    res.writeHead(status, { ...globalHeaders, 'Content-Type': type, 'Content-Encoding': 'gzip' });
     return fs.createReadStream(file).pipe(zlib.createGzip()).pipe(res);
   }
-  res.writeHead(status, { 'Content-Type': type });
+  res.writeHead(status, { ...globalHeaders, 'Content-Type': type });
   fs.createReadStream(file).pipe(res);
 }).listen(port, () => console.log(`Serving dist/ at http://localhost:${port}`));

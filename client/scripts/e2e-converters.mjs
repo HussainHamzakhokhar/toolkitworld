@@ -8,7 +8,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell } from 'docx';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, ExternalHyperlink } from 'docx';
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
 import { unzipSync } from 'fflate';
@@ -51,6 +51,14 @@ const docx = new Document({ sections: [{ children: [
 ] }] });
 const docxFile = path.join(tmp, 'proposal.docx');
 await fs.writeFile(docxFile, await Packer.toBuffer(docx));
+
+// 3b. A hostile Word document: a javascript: link and HTML-looking text.
+const evil = new Document({ sections: [{ children: [
+  new Paragraph({ children: [new ExternalHyperlink({ link: 'javascript:window.__pwned=1', children: [new TextRun('Click me')] })] }),
+  new Paragraph('<img src=x onerror="window.__pwned=2"> <script>window.__pwned=3</script>'),
+] }] });
+const evilDocx = path.join(tmp, 'evil.docx');
+await fs.writeFile(evilDocx, await Packer.toBuffer(evil));
 
 // 4. An Excel workbook with two sheets, a merged cell and a wide sheet.
 const wb = XLSX.utils.book_new();
@@ -154,6 +162,21 @@ await test('Word→PDF: rejects .doc and non-docx files', async () => {
   const fake = path.join(tmp, 'old.doc'); await fs.writeFile(fake, 'x');
   await upload(fake);
   await waitText('.alert--error', /\.doc files are not supported/);
+});
+await test('Word→PDF: hostile document cannot run code in the preview', async () => {
+  await go('/pdf-tools/word-to-pdf/');
+  await upload(evilDocx);
+  await page.waitForSelector('.doc-preview');
+  await page.evaluate(() => document.querySelector('.doc-preview a')?.click());
+  await new Promise((r) => setTimeout(r, 500));
+  const r = await page.evaluate(() => ({ pwned: window.__pwned, html: document.querySelector('.doc-preview').innerHTML }));
+  expect(!r.pwned, 'code executed: ' + r.pwned);
+  expect(!/href=|<img|<script/i.test(r.html), 'unsafe markup survived: ' + r.html);
+  expect(r.html.includes('&lt;script&gt;'), 'text should be shown escaped');
+});
+await test('Security headers are served (CSP, HSTS, nosniff, frame protection)', async () => {
+  const res = await fetch(BASE + '/');
+  for (const h of ['content-security-policy', 'strict-transport-security', 'x-content-type-options', 'x-frame-options', 'referrer-policy', 'permissions-policy']) expect(res.headers.get(h), 'missing header ' + h);
 });
 await test('Excel→PDF: sheets listed, merged title, both sheets in PDF', async () => {
   await go('/pdf-tools/excel-to-pdf/');

@@ -8,6 +8,7 @@
  *   Images → PDF : pdf-lib;  PDF → Images : pdf.js rendering
  */
 import { loadPdfJs, PdfError } from './pdf';
+import { sanitizeHtml } from './sanitize';
 import { bodySize, buildParagraphs, buildTable, groupLines, toCellValue } from './pdfLayout';
 
 export async function loadPdfMake() {
@@ -134,8 +135,6 @@ export async function pdfToXlsx(extracted, { onePerPage = true, numbers = true }
 }
 
 // ---------------- Word → PDF ----------------
-const SAFE_IMG = /^data:image\/(png|jpe?g);base64,/i;
-
 /** Converts .docx to clean, safe HTML (also used for the on-page preview). */
 export async function docxToHtml(arrayBuffer) {
   const mod = await import('mammoth/mammoth.browser.js');
@@ -146,17 +145,8 @@ export async function docxToHtml(arrayBuffer) {
   } catch {
     throw new Error('This file could not be read as a Word document. Only .docx files are supported — open .doc files in Word or LibreOffice and save them as .docx first.');
   }
-  // Sanitise: keep only safe links and PNG/JPEG images; drop anything executable.
-  const doc = new DOMParser().parseFromString(`<div>${result.value}</div>`, 'text/html');
-  doc.querySelectorAll('script,style,iframe,object,embed').forEach((n) => n.remove());
-  let droppedImages = 0;
-  doc.querySelectorAll('*').forEach((el) => {
-    for (const a of [...el.attributes]) if (/^on/i.test(a.name)) el.removeAttribute(a.name);
-    if (el.tagName === 'A' && !/^(https?:|mailto:|#)/i.test(el.getAttribute('href') || '')) el.removeAttribute('href');
-    if (el.tagName === 'IMG' && !SAFE_IMG.test(el.getAttribute('src') || '')) { el.remove(); droppedImages++; }
-  });
-  const html = doc.body.firstElementChild.innerHTML;
-  const text = doc.body.textContent || '';
+  // Allowlist sanitising: only safe tags, links and PNG/JPEG images survive.
+  const { html, text, droppedImages } = sanitizeHtml(result.value);
   return { html, words: text.split(/\s+/).filter(Boolean).length, droppedImages, warnings: result.messages.filter((m) => m.type === 'warning').length };
 }
 

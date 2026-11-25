@@ -190,13 +190,18 @@ On **Render.com**: New → Web Service → connect the repo → Root directory `
 - [ ] Search Console verified, sitemap submitted, pages being indexed.
 - [ ] No broken links, no "coming soon" sections, no copied content.
 - [ ] You are 18+ and the AdSense account details match you or your business.
-- [ ] After approval: add the IDs, confirm `ads.txt` is live at `/ads.txt`, and enable the certified CMP message for European visitors.
+- [ ] After approval: add the IDs and confirm `ads.txt` is live at `/ads.txt`.
+- [ ] **Required for ads in the EEA, UK and Switzerland:** AdSense → Privacy & messaging → create a **European regulations** message (Google's certified CMP, free) and publish it. Our own banner is not a certified CMP. Without it, Google limits or blocks ads for European visitors.
+- [ ] Recommended: also enable the **US state regulations** message in Privacy & messaging, which handles "Do not sell or share" opt-outs under California and other US state laws.
 
 Approval is decided by Google and is **not guaranteed**. Traffic, earnings and rankings depend on many factors, and none are promised here.
 
 ## 12. Security and privacy summary
 
 - Files never leave the browser. Uploads are validated by **file signature** (magic bytes), size and pixel limits, and output names are sanitised.
+- HTML generated from uploaded Word files passes through an **allowlist sanitiser** (`src/utils/sanitize.js`), so only safe tags, http(s)/mailto links and PNG/JPEG images survive. Tests cover script tags, event handlers, `javascript:` links, SVG, forms, `<base>`/`<meta>` and a hostile .docx file.
+- `npm audit`: 0 known vulnerabilities (client and server, 25 Nov 2026). Re-run it monthly and update dependencies.
+- Content-Security-Policy blocks plugins (`object-src 'none'`), `<base>` hijacking and form hijacking, and other sites framing yours (`frame-ancestors 'self'`). It deliberately doesn't restrict `script-src`, because AdSense loads scripts from many Google domains that change over time. Tighten it only after ads are live, and test that ads still show.
 - Static hosting with security headers (`public/_headers`). No secrets live in the client. All configuration comes from environment variables.
 - API: Helmet, CORS restricted to your origins, a global rate limit plus 5 contact messages per 15 minutes per IP, JSON body limit 20 KB, input sanitising, a honeypot spam trap, and generic error messages (no stack traces). Messages are forwarded rather than stored.
 - Analytics and personalised ads only run with consent. Consent is stored on the visitor's device.
